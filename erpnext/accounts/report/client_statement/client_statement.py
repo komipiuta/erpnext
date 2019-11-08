@@ -17,8 +17,9 @@ from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import g
 from collections import OrderedDict
 
 from frappe.contacts.doctype.address.address import get_address_display
+from frappe.desk.reportview import build_match_conditions
 
-import datetime
+# import datetime
 from datetime import date
 
 
@@ -38,21 +39,12 @@ def execute(filters=None):
 
 	for acc in frappe.db.sql("""select name, is_group from tabAccount""", as_dict=1):
 		account_details.setdefault(acc.name, acc)
-		
-# 	frappe.throw(filters.get('party'))
-	
-# 	filters.party = filters.get('party')
-
-# 	if filters.get('party'):
-# 		filters.party = frappe.parse_json(filters.get("party"))
 
 	validate_filters(filters, account_details)
 
-# 	validate_party(filters)
-	filters
+	validate_party(filters)
 	header["customer_name"] = filters.party
 	header["customer_details"] = get_customer_details(filters.party)
-# 	header["customer_aging"] = get_customer_aging_details(filters.party)
 	
 	filters = set_account_currency(filters)
 
@@ -60,31 +52,14 @@ def execute(filters=None):
 
 	res = get_result(filters, account_details)
 	
-# 	header["customer_aging"] = ageing_bucket(res)
 	current, days30, days60, days90  = ageing_bucket_totals(res)
 	
 	header["current"] = current
 	header["days30"]  = days30
 	header["days60"]  = days60
 	header["days90"]  = days90
-	
-# 	print(str(current))
-# 	print(str(days30))
-# 	print(str(days60))
-# 	print(str(days90))
 
-	
-# 	res.insert(0,customer_details)
-	
-# 	print(customer_details)
-	
-# 	frappe.throw(customer_details)
-	
-# 	frappe.throw("What went wrong")
-
-# 	return columns, res
-# 	return columns, res, [ ], [ ], customer_details
-	return columns, res, "hello", '', header
+	return columns, res, None, None, header
 
 
 def get_customer_details(party):
@@ -92,65 +67,28 @@ def get_customer_details(party):
 	if not party:
 		return []
 
-	address = frappe.db.sql(""" select name, address_line1, address_line2, city, state,
-		email_id, phone, fax, pincode from `tabAddress` where is_shipping_address = 0 and name in
-		(select parent from `tabDynamic Link` where link_doctype = 'Customer' and link_name = %(party)s
-		and parenttype = 'Address')""", {"party": party}, as_dict=True)
+	address = frappe.db.sql(""" 
+		SELECT name, address_line1, address_line2, city, state,
+			   email_id, phone, fax, pincode 
+		FROM  `tabAddress`
+		WHERE is_shipping_address = 0
+		  AND name in (SELECT parent 
+		                 FROM `tabDynamic Link` 
+		                WHERE link_doctype = 'Customer' AND link_name = %(party)s
+		                  AND parenttype = 'Address')""", {"party": party}, as_dict=True)
 
 
 	address_data = {}
 	if address:
 		address_data = address[0]
-	
-# 		address_data['full_name'] = party
-	
+
 	return address_data
-
-
-def get_customer_aging_details(res):
-	
-# 	outstanding_range = [0.0, 0.0, 0.0, 0.0]
-	
-	
-	print(str(res))
-	
-# 	for i in range(len(res)):
-# 		for j in range(len(res[i])):
-# 			
-# 			//print(res[i][j], end=' ')
-# 			
-# 
-# 		print()
-
-	
-	return res
-	
-
 		
 
 def validate_filters(filters, account_details):
-# 	if not filters.get('company'):
-# 		frappe.throw(_('{0} is mandatory').format(_('Company')))
-
-# 	if filters.get("account") and not account_details.get(filters.account):
-# 		frappe.throw(_("Account {0} does not exists").format(filters.account))
-# 
-# 	if (filters.get("account") and filters.get("group_by") == _('Group by Account')
-# 		and account_details[filters.account].is_group == 0):
-# 		frappe.throw(_("Can not filter based on Account, if grouped by Account"))
-
-# 	if (filters.get("voucher_no")
-# 		and filters.get("group_by") in [_('Group by Voucher')]):
-# 		frappe.throw(_("Can not filter based on Voucher No, if grouped by Voucher"))
 
 	if filters.from_date > filters.to_date:
 		frappe.throw(_("From Date must be before To Date"))
-
-# 	if filters.get('project'):
-# 		filters.project = frappe.parse_json(filters.get('project'))
-# 
-# 	if filters.get('cost_center'):
-# 		filters.cost_center = frappe.parse_json(filters.get('cost_center'))
 
 
 def validate_party(filters):
@@ -205,10 +143,10 @@ def get_gl_entries(filters):
 	select_fields = """, debit, credit, debit_in_account_currency,
 		credit_in_account_currency """
 
-	order_by_statement = "order by posting_date, account"
+	order_by_statement = "ORDER BY posting_date, account"
 
 	if filters.get("group_by") == _("Group by Voucher"):
-		order_by_statement = "order by posting_date, voucher_type, voucher_no"
+		order_by_statement = "ORDER BY posting_date, voucher_type, voucher_no"
 
 	if filters.get("include_default_book_entries"):
 		filters['company_fb'] = frappe.db.get_value("Company",
@@ -217,13 +155,13 @@ def get_gl_entries(filters):
 
 	gl_entries = frappe.db.sql(
 		"""
-		select
+		SELECT
 			posting_date, account, party_type, party,
 			voucher_type, voucher_no, cost_center, project,
 			against_voucher_type, against_voucher, account_currency,
 			remarks, against, is_opening {select_fields}
-		from `tabGL Entry`
-		where company=%(company)s {conditions}
+		FROM `tabGL Entry`
+		WHERE company=%(company)s {conditions}
 		{order_by_statement}
 		""".format(
 			select_fields=select_fields, conditions=get_conditions(filters),
@@ -243,8 +181,8 @@ def get_conditions(filters):
 	conditions = []
 	if filters.get("account"):
 		lft, rgt = frappe.db.get_value("Account", filters["account"], ["lft", "rgt"])
-		conditions.append("""account in (select name from tabAccount
-			where lft>=%s and rgt<=%s and docstatus<2)""" % (lft, rgt))
+		conditions.append("""account IN (SELECT name FROM tabAccount
+			WHERE lft>=%s and rgt<=%s and docstatus<2)""" % (lft, rgt))
 
 	if filters.get("cost_center"):
 		filters.cost_center = get_cost_centers_with_children(filters.cost_center)
@@ -252,9 +190,6 @@ def get_conditions(filters):
 
 	if filters.get("voucher_no"):
 		conditions.append("voucher_no=%(voucher_no)s")
-
-	if filters.get("group_by") == "Group by Party" and not filters.get("party_type"):
-		conditions.append("party_type in ('Customer', 'Supplier')")
 
 	if filters.get("party_type"):
 		conditions.append("party_type=%(party_type)s")
@@ -268,16 +203,6 @@ def get_conditions(filters):
 
 	conditions.append("(posting_date <=%(to_date)s or is_opening = 'Yes')")
 
-	if filters.get("project"):
-		conditions.append("project in %(project)s")
-
-	if filters.get("finance_book"):
-		if filters.get("include_default_book_entries"):
-			conditions.append("finance_book in (%(finance_book)s, %(company_fb)s)")
-		else:
-			conditions.append("finance_book in (%(finance_book)s)")
-	
-	from frappe.desk.reportview import build_match_conditions
 	match_conditions = build_match_conditions("GL Entry")
 
 	if match_conditions:
@@ -445,8 +370,6 @@ def update_payment_reference(gl_entries):
 	:return:
 	"""
 	converted_gl_list = []
-# 	presentation_currency = currency_info['presentation_currency']
-# 	company_currency = currency_info['company_currency']
 
 	for entry in gl_entries:
 		
@@ -484,13 +407,6 @@ def get_columns(filters):
 			"fieldtype": "Date",
 			"width": 90
 		},
-# 		{
-# 			"label": _("Account"),
-# 			"fieldname": "account",
-# 			"fieldtype": "Link",
-# 			"options": "Account",
-# 			"width": 180
-# 		},
  		{
  			"label": _("Description"),
  			"fieldname": "voucher_type",
@@ -524,75 +440,12 @@ def get_columns(filters):
 	]
 
 	columns.extend([
-# 		{
-# 			"label": _("Voucher Type"),
-# 			"fieldname": "voucher_type",
-# 			"width": 120
-# 		},
-# 		{
-# 			"label": _("Voucher No"),
-# 			"fieldname": "voucher_no",
-# 			"fieldtype": "Dynamic Link",
-# 			"options": "voucher_type",
-# 			"width": 180
-# 		},
-# 		{
-# 			"label": _("Against Account"),
-# 			"fieldname": "against",
-# 			"width": 120
-# 		},
-# 		{
-# 			"label": _("Party Type"),
-# 			"fieldname": "party_type",
-# 			"width": 100
-# 		},
-# 		{
-# 			"label": _("Party"),
-# 			"fieldname": "party",
-# 			"width": 100
-# 		},
-# 		{
-# 			"label": _("Project"),
-# 			"options": "Project",
-# 			"fieldname": "project",
-# 			"width": 100
-# 		},
-# 		{
-# 			"label": _("Cost Center"),
-# 			"options": "Cost Center",
-# 			"fieldname": "cost_center",
-# 			"width": 100
-# 		},
-# 		{
-# 			"label": _("Against Voucher Type"),
-# 			"fieldname": "against_voucher_type",
-# 			"width": 100
-# 		},
-# 		{
-# 			"label": _("Against Voucher"),
-# 			"fieldname": "against_voucher",
-# 			"fieldtype": "Dynamic Link",
-# 			"options": "against_voucher_type",
-# 			"width": 100
-# 		},
-# 		{
-# 			"label": _("Supplier Invoice No"),
-# 			"fieldname": "bill_no",
-# 			"fieldtype": "Data",
-# 			"width": 100
-# 		},
-# 		{
-# 			"label": _("Remarks"),
-# 			"fieldname": "remarks",
-# 			"width": 400
-# 		}
 	])
 
 	return columns
 
 def ageing_bucket_totals(entries):
 
-# 	current, days30, days60, days90, dayspast90 = [], [], [], [], []
 	current_total, days30_total, days60_total, days90_total = 0, 0, 0, 0  
 	now  = date.today()
 	
@@ -605,43 +458,17 @@ def ageing_bucket_totals(entries):
 			duration = now - then
 			days  = duration.days
 
-# 			if 1 <= days <= 30:
 			if days <= 30:
-# 					current.append(entries[index][key])
 				current_total = current_total + entries[index].get('debit') - entries[index].get('credit') 
-# 				days30_total = days30_total + entries[index].get('debit') - entries[index].get('credit') 
-# 				days60_total = days60_total + entries[index].get('debit') - entries[index].get('credit') 
-# 				days90_total = days90_total + entries[index].get('debit') - entries[index].get('credit') 
 			
-# 			if 31 <= days <= 60:
 			if 60 <= days >= 31:
-# 					days30.append(entries[index][key])
 				days30_total = days30_total + entries[index].get('debit') - entries[index].get('credit')
-# 				days60_total = days60_total + entries[index].get('debit') - entries[index].get('credit')
-# 				days90_total = days90_total + entries[index].get('debit') - entries[index].get('credit')   
 
-# 			if 61 <= days <= 90:
 			if 90 <= days >= 61:
-# 					days60.append(entries[index][key])
 				days60_total = days60_total + entries[index].get('debit') - entries[index].get('credit') 
-# 				days90_total = days90_total + entries[index].get('debit') - entries[index].get('credit') 
 			
 			if days >= 90:
-# 					days90.append(entries[index][key])
 				days90_total = days90_total + entries[index].get('debit') - entries[index].get('credit') 
 	
 	
-# 	days30_total = days30_total - current_total
-# 	days60_total = days60_total - days30_total
-# 	days90_total = days90_total - days60_total
-# 		
-		
-# 		days60_total = days60_total + days90_total
-# 		days30_total = days30_total + days60_total;
-# 		current_total = current_total + days30_total;
-		
-# 		current_total = current_total + days30_total + days60_total + days90_total
-	#                print(then, days)
-	
-# 	return current, days30, days60, days90, dayspast90
 	return current_total, days30_total, days60_total, days90_total
