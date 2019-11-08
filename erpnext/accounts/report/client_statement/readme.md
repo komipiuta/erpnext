@@ -19,6 +19,7 @@ The recommended way to install this is using git.
 - Pull the branch. You can do this by
    - adding this repository as a remote repository, 
 ```
+cd frappe-bench/apps/erpnext
 git remote add myfork https://github.com/pradeshc/erpnext.git
 git fetch myfork
 git checkout client_statement
