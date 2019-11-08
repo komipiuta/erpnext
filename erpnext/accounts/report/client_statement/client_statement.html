@@ -13,10 +13,6 @@ body {
       }
 </style>
 
-
-
-<p>{%= data[0].address_line1 %}</p>
-
 <h2 class="text-center">{%= __("Statement of Account") %}</h2>
 <h4 class="text-center">
 	{% if (filters.party_name) { %}
@@ -41,13 +37,12 @@ body {
 </h5>
 
 <hr>
-
 <div>
-	<p><strong>{%= filters.party_name %}</strong></p>
-	<p><strong>{%= data[0].address_line1 %}</strong></p>
-	<p><strong>{%= data[0].address_line2 %}</strong></p>
-	<p><strong>{%= data[0].city %}</strong></p>
-	<p><strong>{%= data[0].state %}</strong></p>
+	<p><strong>{%= report.raw_data.data_to_be_printed.customer_name %}</strong></p>
+	<p><strong>{%= report.raw_data.data_to_be_printed.customer_details.address_line1 %}</strong></p>
+	<p><strong>{%= report.raw_data.data_to_be_printed.customer_details.address_line2 %}</strong></p>
+	<p><strong>{%= report.raw_data.data_to_be_printed.customer_details.city %}</strong></p>
+	<p><strong>{%= report.raw_data.data_to_be_printed.customer_details.state %}</strong></p>
 </div>
 <hr>
 
@@ -64,12 +59,7 @@ body {
 	</thead>
 	<tbody>
 		{% for(var i=0, l=data.length-1; i<l; i++) { %}
-		
-			{% 
-				if (i == 0) {
-					continue;
-				} 
-			%}
+
 		
 			<tr>
 			{% if(data[i].posting_date) { %}
@@ -99,4 +89,41 @@ body {
 		{% } %}
 	</tbody>
 </table>
+<hr/>
+
+<table class="table table-bordered" width="100%">
+	<tr>
+		<th>Age (Days)</th>
+	</tr>
+	<tr>
+		<th>
+			0-30
+		</th>
+		<th>
+			31-60
+		</th>
+		<th>
+			61-90
+		</th>
+		<th>
+			91-Above
+		</th>
+	</tr>
+	<tr>
+		<td>
+			{%= format_currency(report.raw_data.data_to_be_printed.current) %}
+		</td>
+		<td>
+			{%= format_currency(report.raw_data.data_to_be_printed.days30) %}
+		</td>
+		<td>
+			{%= format_currency(report.raw_data.data_to_be_printed.days60) %}
+		</td>
+		<td>
+			{%= format_currency(report.raw_data.data_to_be_printed.days90) %}
+		</td>
+	</tr>
+	
+</table>
+
 <p class="text-right text-muted">Printed On {%= frappe.datetime.str_to_user(frappe.datetime.get_datetime_as_string()) %}</p>

@@ -18,10 +18,17 @@ from collections import OrderedDict
 
 from frappe.contacts.doctype.address.address import get_address_display
 
+import datetime
+from datetime import date
+
+
 
 def execute(filters=None):
 	if not filters:
 		return [], []
+	
+	
+	header = {}
 
 	account_details = {}
 
@@ -42,9 +49,10 @@ def execute(filters=None):
 	validate_filters(filters, account_details)
 
 # 	validate_party(filters)
-	
-
-	customer_details = get_customer_details(filters.party)
+	filters
+	header["customer_name"] = filters.party
+	header["customer_details"] = get_customer_details(filters.party)
+# 	header["customer_aging"] = get_customer_aging_details(filters.party)
 	
 	filters = set_account_currency(filters)
 
@@ -52,7 +60,21 @@ def execute(filters=None):
 
 	res = get_result(filters, account_details)
 	
-	res.insert(0,customer_details)
+# 	header["customer_aging"] = ageing_bucket(res)
+	current, days30, days60, days90  = ageing_bucket_totals(res)
+	
+	header["current"] = current
+	header["days30"]  = days30
+	header["days60"]  = days60
+	header["days90"]  = days90
+	
+# 	print(str(current))
+# 	print(str(days30))
+# 	print(str(days60))
+# 	print(str(days90))
+
+	
+# 	res.insert(0,customer_details)
 	
 # 	print(customer_details)
 	
@@ -62,7 +84,7 @@ def execute(filters=None):
 
 # 	return columns, res
 # 	return columns, res, [ ], [ ], customer_details
-	return columns, res, "hello", '', customer_details
+	return columns, res, "hello", '', header
 
 
 def get_customer_details(party):
@@ -83,6 +105,25 @@ def get_customer_details(party):
 # 		address_data['full_name'] = party
 	
 	return address_data
+
+
+def get_customer_aging_details(res):
+	
+# 	outstanding_range = [0.0, 0.0, 0.0, 0.0]
+	
+	
+	print(str(res))
+	
+# 	for i in range(len(res)):
+# 		for j in range(len(res[i])):
+# 			
+# 			//print(res[i][j], end=' ')
+# 			
+# 
+# 		print()
+
+	
+	return res
 	
 
 		
@@ -172,6 +213,7 @@ def get_gl_entries(filters):
 	if filters.get("include_default_book_entries"):
 		filters['company_fb'] = frappe.db.get_value("Company",
 			filters.get("company"), 'default_finance_book')
+
 
 	gl_entries = frappe.db.sql(
 		"""
@@ -547,3 +589,59 @@ def get_columns(filters):
 	])
 
 	return columns
+
+def ageing_bucket_totals(entries):
+
+# 	current, days30, days60, days90, dayspast90 = [], [], [], [], []
+	current_total, days30_total, days60_total, days90_total = 0, 0, 0, 0  
+	now  = date.today()
+	
+	for index in range(len(entries)):
+		
+		then = entries[index].get('posting_date')
+
+		if not (then is None):
+			
+			duration = now - then
+			days  = duration.days
+
+# 			if 1 <= days <= 30:
+			if days <= 30:
+# 					current.append(entries[index][key])
+				current_total = current_total + entries[index].get('debit') - entries[index].get('credit') 
+# 				days30_total = days30_total + entries[index].get('debit') - entries[index].get('credit') 
+# 				days60_total = days60_total + entries[index].get('debit') - entries[index].get('credit') 
+# 				days90_total = days90_total + entries[index].get('debit') - entries[index].get('credit') 
+			
+# 			if 31 <= days <= 60:
+			if 60 <= days >= 31:
+# 					days30.append(entries[index][key])
+				days30_total = days30_total + entries[index].get('debit') - entries[index].get('credit')
+# 				days60_total = days60_total + entries[index].get('debit') - entries[index].get('credit')
+# 				days90_total = days90_total + entries[index].get('debit') - entries[index].get('credit')   
+
+# 			if 61 <= days <= 90:
+			if 90 <= days >= 61:
+# 					days60.append(entries[index][key])
+				days60_total = days60_total + entries[index].get('debit') - entries[index].get('credit') 
+# 				days90_total = days90_total + entries[index].get('debit') - entries[index].get('credit') 
+			
+			if days >= 90:
+# 					days90.append(entries[index][key])
+				days90_total = days90_total + entries[index].get('debit') - entries[index].get('credit') 
+	
+	
+# 	days30_total = days30_total - current_total
+# 	days60_total = days60_total - days30_total
+# 	days90_total = days90_total - days60_total
+# 		
+		
+# 		days60_total = days60_total + days90_total
+# 		days30_total = days30_total + days60_total;
+# 		current_total = current_total + days30_total;
+		
+# 		current_total = current_total + days30_total + days60_total + days90_total
+	#                print(then, days)
+	
+# 	return current, days30, days60, days90, dayspast90
+	return current_total, days30_total, days60_total, days90_total
