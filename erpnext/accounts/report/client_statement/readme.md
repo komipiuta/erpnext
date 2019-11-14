@@ -15,11 +15,13 @@ The recommended way to install this is using git.
 - Enable developer mode for your site
 - Log in as an administrator
 - Navigate to the "New Report" menu.
-- Create a new scipt report
+- Create a new script report
+   - 	Report Name	 : Client Statement
+   - 	Ref DocType	: Account
+   - Report Type : Script Report
 - Pull the branch. You can do this by
    - adding this repository as a remote repository, 
 ```
-cd frappe-bench/apps/erpnext
 git remote add myfork https://github.com/pradeshc/erpnext.git
 git fetch myfork
 git checkout client_statement
@@ -41,7 +43,7 @@ git  merge client_statement
   You may not be comfortable with messing with this
  
 
-###References
+# References
 
 https://mirrors.edge.kernel.org/pub/software/scm/git/docs/git-fetch.html
 https://stackoverflow.com/questions/6368987/how-do-i-fetch-only-one-branch-of-a-remote-git-repository/26270966

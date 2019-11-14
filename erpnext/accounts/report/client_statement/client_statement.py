@@ -23,11 +23,9 @@ from frappe.desk.reportview import build_match_conditions
 from datetime import date
 
 
-
 def execute(filters=None):
 	if not filters:
 		return [], []
-	
 	
 	header = {}
 
@@ -169,7 +167,7 @@ def get_gl_entries(filters):
 		),
 		filters, as_dict=1)
 
-	gl_entries = update_payment_reference(gl_entries)
+# 	gl_entries = update_payment_reference(gl_entries)
 
 	if filters.get('presentation_currency'):
 		return convert_to_presentation_currency(gl_entries, currency_map)
